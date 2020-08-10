@@ -1,0 +1,447 @@
+---
+title: "NBA Statistics and Salary"
+author: "Prithvi Tanna"
+date: "5/29/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE, warning = FALSE,cache = FALSE)
+rm(list = ls())
+```
+
+Every summer, NBA General Managers face tough decisions in regards to players on expiring contracts. They need to decide how much to pay their player. The amount they offer must be an accurate reflection of what the player offers to the team. If a General Manager tries to give a player a lowball offer, the player might decide to take their talents to another team. However, if a General Manager offers too much money, they will have less money to spend on other players. The key is to pay a player what he is truly worth. This project is an attempt to model NBA salaries in 2020 based on player statistics and attributes. I examined many player statistics to find out which ones really matter when deciding to pay a player. Hopefully, my final model can serve as a tool to find out what every player is worth and to find the most overpaid and underpaid players in the NBA.
+
+## Webscraping Data
+
+This section of code involves scraping five different pages on basketball reference and espn for NBA player salary and statistics. Five different datsets were extracted. The first dataset contains the salaries of all NBA players. The second contains every player's basic counting statistics like points,rebounds, assists, etc. The third dataset contains the more advanced statistics like win shares and value over replacement player. The fourth dataset contains all all star players, which I will use later to identify if a player in the dataset has ever been recognized as an all star. The final dataset is ESPN's rpm (real plus minus) calculated for every NBA Player.
+
+
+```{r}
+library(rvest)
+library(dplyr)
+
+
+##scrape salary data
+salaries <- html_table(read_html("https://www.basketball-reference.com/contracts/players.html"))[[1]]
+
+colnames(salaries) <- c("Rank","Player","Team","Salary(2019-2020)","Salary(2020-2021)","Salary(2021-2022)","Salary(2022-2023","Salary(2023-2024)","Salary(2024-2025)","Signed Using","Guaranteed")
+
+##Scrape basic statistics
+player_stats <- html_table(read_html("https://www.basketball-reference.com/leagues/NBA_2020_per_game.html"), header = TRUE)[[1]]
+
+##scrape advanced statistics
+adv_stats <- html_table(read_html("https://www.basketball-reference.com/leagues/NBA_2020_advanced.html"), header = TRUE)[[1]]
+
+#scrape all star data
+all_stars = html_table(read_html("https://www.basketball-reference.com/awards/all_star_by_player.html"), header = TRUE)[[1]]
+
+##scrape 1st page of rpm data
+rpm = html_table(read_html('http://www.espn.com/nba/statistics/rpm'),header = TRUE)[[1]]
+
+url = 'http://www.espn.com/nba/statistics/rpm/_/page/'
+
+for (i in 2:13){ ##scrape remaining pages of rpm data
+   page_name = paste0(url,i)
+   df = html_table(read_html(page_name),header = TRUE)[[1]]
+   rpm = rbind(rpm,df)
+}
+
+
+```
+
+```{r,echo=FALSE}
+removeAccents<-function(x)
+{
+a <- c('À', 'Á', 'Â', 'Ã', 'Ä', 'Å', 'Æ', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï', 'Ð', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ø', 'Ù', 'Ú', 'Û', 'Ü', 'Ý', 'ß', 'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ç', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'ù', 'ú', 'û', 'ü', 'ý', 'ÿ', 'Ā', 'ā', 'Ă', 'ă', 'Ą', 'ą', 'Ć', 'ć', 'Ĉ', 'ĉ', 'Ċ', 'ċ', 'Č', 'č', 'Ď', 'ď', 'Đ', 'đ', 'Ē', 'ē', 'Ĕ', 'ĕ', 'Ė', 'ė', 'Ę', 'ę', 'Ě', 'ě', 'Ĝ', 'ĝ', 'Ğ', 'ğ', 'Ġ', 'ġ', 'Ģ', 'ģ', 'Ĥ', 'ĥ', 'Ħ', 'ħ', 'Ĩ', 'ĩ', 'Ī', 'ī', 'Ĭ', 'ĭ', 'Į', 'į', 'İ', 'ı', 'Ĳ', 'ĳ', 'Ĵ', 'ĵ', 'Ķ', 'ķ', 'Ĺ', 'ĺ', 'Ļ', 'ļ', 'Ľ', 'ľ', 'Ŀ', 'ŀ', 'Ł', 'ł', 'Ń', 'ń', 'Ņ', 'ņ', 'Ň', 'ň', 'ŉ', 'Ō', 'ō', 'Ŏ', 'ŏ', 'Ő', 'ő', 'Œ', 'œ', 'Ŕ', 'ŕ', 'Ŗ', 'ŗ', 'Ř', 'ř', 'Ś', 'ś', 'Ŝ', 'ŝ', 'Ş', 'ş', 'Š', 'š', 'Ţ', 'ţ', 'Ť', 'ť', 'Ŧ', 'ŧ', 'Ũ', 'ũ', 'Ū', 'ū', 'Ŭ', 'ŭ', 'Ů', 'ů', 'Ű', 'ű', 'Ų', 'ų', 'Ŵ', 'ŵ', 'Ŷ', 'ŷ', 'Ÿ', 'Ź', 'ź', 'Ż', 'ż', 'Ž', 'ž', 'ſ', 'ƒ', 'Ơ', 'ơ', 'Ư', 'ư', 'Ǎ', 'ǎ', 'Ǐ', 'ǐ', 'Ǒ', 'ǒ', 'Ǔ', 'ǔ', 'Ǖ', 'ǖ', 'Ǘ', 'ǘ', 'Ǚ', 'ǚ', 'Ǜ', 'ǜ', 'Ǻ', 'ǻ', 'Ǽ', 'ǽ', 'Ǿ', 'ǿ');
+b <- c('A', 'A', 'A', 'A', 'A', 'A', 'AE', 'C', 'E', 'E', 'E', 'E', 'I', 'I', 'I', 'I', 'D', 'N', 'O', 'O', 'O', 'O', 'O', 'O', 'U', 'U', 'U', 'U', 'Y', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'ae', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y', 'y', 'A', 'a', 'A', 'a', 'A', 'a', 'C', 'c', 'C', 'c', 'C', 'c', 'C', 'c', 'D', 'd', 'D', 'd', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'G', 'g', 'G', 'g', 'G', 'g', 'G', 'g', 'H', 'h', 'H', 'h', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'IJ', 'ij', 'J', 'j', 'K', 'k', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l', 'l', 'l', 'N', 'n', 'N', 'n', 'N', 'n', 'n', 'O', 'o', 'O', 'o', 'O', 'o', 'OE', 'oe', 'R', 'r', 'R', 'r', 'R', 'r', 'S', 's', 'S', 's', 'S', 's', 'S', 's', 'T', 't', 'T', 't', 'T', 't', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'W', 'w', 'Y', 'y', 'Y', 'Z', 'z', 'Z', 'z', 'Z', 'z', 's', 'f', 'O', 'o', 'U', 'u', 'A', 'a', 'I', 'i', 'O', 'o', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'A', 'a', 'AE', 'ae', 'O', 'o');
+
+for(i in 1:length(a))
+{
+x<-gsub(x = x,pattern = a[i],replacement = b[i])
+}
+return(x)
+}
+
+removeTitles <- function(x){
+  x = gsub(" Jr.","",x,fixed = TRUE)
+  x = gsub(" Sr.","",x,fixed = TRUE)
+  x = gsub(" IV","",x,fixed = TRUE)
+  x = gsub(" III","",x,fixed = TRUE)
+  x = gsub(" II","",x,fixed = TRUE)
+  x = gsub(".","",x,fixed = TRUE)
+  return(x)
+}
+```
+
+##Cleaning and Combining Data
+
+In this section, we cleaned and combined our datasets. Some common issues were empty rows of data, different names for the same player in data frames (Jr. or III), and players playing a season for multiple teams meaning they have more than one entry in the dataframe. Sometimes, a player playing for multiple teams in one season would have different salaries for different teams. I solved this problem by adding up total salalries for players who players for more than one team. I also had to remove all foreign accents as the RPM dataset did not include them. The RPM dataset also had the name column in the format (name,pos) so I had to extract only the name from this column. Once all the names matched up, I used an inner join command to combine all the datasets by player name.
+
+```{r}
+library(stringi)
+
+##filter out empty rows and incorrect rows
+salaries_cleaned <- salaries %>%
+  filter(Player != "Player" & Player != "")
+
+salaries_cleaned = salaries_cleaned[,-c(5:9)] ##filter out variables we are not interested in
+
+##clean salary column to prepare for numeric conversion
+salaries_cleaned$`Salary(2019-2020)` = gsub("$","",salaries_cleaned$`Salary(2019-2020)`,fixed = TRUE)
+salaries_cleaned$`Salary(2019-2020)` = gsub(",","",salaries_cleaned$`Salary(2019-2020)`,fixed = TRUE)
+salaries_cleaned$Guaranteed =  gsub("$","",salaries_cleaned$Guaranteed,fixed = TRUE)
+salaries_cleaned$Guaranteed = gsub(",","",salaries_cleaned$Guaranteed,fixed = TRUE)
+
+##Fill in empty rows in "signed using"
+salaries_cleaned$`Signed Using` = replace(salaries_cleaned$`Signed Using`, salaries_cleaned$`Signed Using` == "", "Other")
+
+salaries_cleaned$`Salary(2019-2020)` = as.numeric(salaries_cleaned$`Salary(2019-2020)`)
+salaries_cleaned$Guaranteed = as.numeric(salaries_cleaned$Guaranteed)
+
+##Adding salaries for players who were on multiple teams
+salaries_cleaned_2 <- aggregate(`Salary(2019-2020)` ~ Player, data = salaries_cleaned, sum)
+salaries_cleaned_3 <- aggregate(Guaranteed ~ Player, data = salaries_cleaned, sum)
+
+salaries_cleaned = salaries_cleaned[!duplicated(salaries_cleaned$Player),] %>%
+  select(-`Salary(2019-2020)`,-Guaranteed)
+
+##Adding combined salaries to dataset using an inner join
+salaries_cleaned = salaries_cleaned %>%
+  inner_join(salaries_cleaned_2) %>%
+  inner_join(salaries_cleaned_3)
+
+salaries_cleaned$Player[which(salaries_cleaned$Player == "Mohamed Bamba",arr.ind = TRUE)] = "Mo Bamba"
+
+salaries_cleaned$Player[which(salaries_cleaned$Player == "Taurean Waller-Prince",arr.ind = TRUE)] = "Taurean Prince"
+
+salaries_cleaned$Player = removeTitles(salaries_cleaned$Player) ##Removing Jr.,Sr. etc from names 
+
+salaries_cleaned$`Salary(2019-2020)` = salaries_cleaned$`Salary(2019-2020)`/1000000 
+
+salaries_cleaned$Guaranteed = salaries_cleaned$Guaranteed/1000000
+
+salaries_cleaned = salaries_cleaned[,-c(1,3)]
+
+duplicate_players <- player_stats %>%
+  count(Player) %>%
+  filter(n > 1)
+
+player_stats_cleaned <- player_stats %>%
+  filter(Tm == "TOT" | !(Player %in% duplicate_players$Player)) ##Filtering out players who appear more than once
+
+num_transform <- player_stats_cleaned %>%
+  select(-Rk,-Player,-Pos,-Tm)
+
+for(i in colnames(num_transform)){ ##char to numeric
+  player_stats_cleaned[[i]] = as.numeric(player_stats_cleaned[[i]])
+}
+
+player_stats_cleaned$Pos = gsub("\\-.*","",player_stats_cleaned$Pos) ##Eliminating second position for players
+
+
+player_stats_cleaned$Player = removeTitles(player_stats_cleaned$Player)##Removing Jr.,Sr. etc from names
+
+adv_stats_cleaned = adv_stats[,-c(1,3:4,6:7,20,25)]
+
+duplicate_players_2 <- adv_stats_cleaned %>% 
+  count(Player) %>%
+  filter(n > 1)
+
+adv_stats_cleaned <- adv_stats_cleaned %>% ##Filtering out players who appear more than once
+  filter(Tm == "TOT" | !(Player %in% duplicate_players_2$Player))
+
+num_transform_2 <- adv_stats_cleaned %>%
+  select(-Player,-Tm)
+
+for(i in colnames(num_transform_2)){
+  adv_stats_cleaned[[i]] = as.numeric(adv_stats_cleaned[[i]])
+}
+
+adv_stats_cleaned = adv_stats_cleaned[,-2]
+
+adv_stats_cleaned$Player = removeTitles(adv_stats_cleaned$Player)
+
+Player = c()
+
+for (i in 1:length(rpm$NAME)){ ##Extracting the name of players from column with format (name, position)
+Player = c(Player,strsplit(rpm$NAME,split = ',')[[i]][1])
+}
+
+rpm$Player = Player
+
+rpm = rpm %>%
+  select(Player,ORPM,DRPM,RPM,WINS)
+
+rpm$Player[which(rpm$Player == "Wes Iwundu",arr.ind = TRUE)] = "Wesley Iwundu"
+
+rpm$Player = removeTitles(rpm$Player)
+
+salaries_stats = player_stats_cleaned %>%
+  inner_join(salaries_cleaned) %>%
+  inner_join(adv_stats_cleaned)
+
+
+salaries_stats$Player = removeAccents(salaries_stats$Player) ##Removing foreign accents for international players
+
+salaries_stats = salaries_stats %>%
+  inner_join(rpm)
+
+salaries_stats$Pos = as.factor(salaries_stats$Pos)
+
+salaries_stats[is.na(salaries_stats)] = 0 ##Replacing NA with 0
+
+head(salaries_stats) ##Final Cleaned Dataset
+
+```
+
+
+##Adding Features
+
+The first feature I created was called age_cat, where I categorized the age variable. The first category I created was young. These are players who are still on their first or second contracts. The second category I created was prime, which is when a player is playing his best basketball and is most likely making the most money in his career. The last category is old. These players are past their primes and are likely making less than they used to. There are obviously exceptions to this as players like LeBron James have been able to maintain their level of play into older ages. The second feature I added was all star, which labeled whether a player has recently been an all star. I had to manually filter out players who were former all stars but are no longer playing up tot hat level today (e.g Dwight Howard, Derrick Rose). The final feature I added on was starter. I created this by dividing the number of games started vs the number of games played. If this ratio was greater than 0.9, I labeled that player a starter.
+
+```{r}
+salaries_stats <- salaries_stats %>% ##Splitting age
+mutate(Age_cat = cut(Age, breaks = c(-Inf,26,34,Inf),
+                       labels = c("Young","Prime","Old")))
+
+all_stars$Player = removeAccents(all_stars$Player)
+
+all_stars$Player = removeTitles(all_stars$Player)
+
+all_stars = all_stars %>%
+  filter(Player != "Carmelo Anthony" & Player != "Isaiah Thomas" & Player != "Rajon Rondo" & Player != "Derrick Rose" & Player != "Vince Carter" & Player != "Dwight Howard" & Player != "Tyson Chandler" & Player != "DeAndre Jordan" & Player != "Glenn Robinson" & Player != "Tim Hardaway" & Player != "Larry Nance" & Player != "Jeff Teague" & Player != "Andre Iguodola" & Player != "Kyle Korver" & Player != "Brook Lopez")
+
+salaries_stats <- salaries_stats %>%
+  mutate(Starter = as.factor(if_else(GS/G > 0.9,"Yes","No")),
+         G_f = as.factor(if_else(Pos == "PG"|Pos == "SG","Guard","Forward")),
+         All_Star = salaries_stats$Player %in% all_stars$Player)
+```
+
+
+
+##Visualization
+
+This section involves basic exploratory data analysis by examining the distribution of variables and their relationships with each other. We are particulary interested in the relationship between salary and each basic and advanced statistic.
+
+```{r,echo=FALSE}
+library(ggplot2)
+library(ggrepel)
+
+bar_plot <- salaries_stats %>%
+  select(`Salary(2019-2020)`,Pos) %>%
+  group_by(Pos) %>%
+  summarise(mean_salary = mean(`Salary(2019-2020)`))
+
+bar_plot2 <- salaries_stats %>%
+  select(`Salary(2019-2020)`,Age_cat) %>%
+  group_by(Age_cat) %>%
+  summarise(mean_salary = mean(`Salary(2019-2020)`))
+
+bar_plot3 <- salaries_stats %>%
+  select(`Salary(2019-2020)`,Starter) %>%
+  group_by(Starter) %>%
+  summarise(mean_salary = mean(`Salary(2019-2020)`))
+
+bar_plot4 = salaries_stats %>%
+  select(`Salary(2019-2020)`,All_Star) %>%
+  group_by(All_Star) %>%
+  summarise(mean_salary = mean(`Salary(2019-2020)`))
+
+```
+
+
+##Correlation Heatmap
+
+```{r,echo=FALSE}
+heatmap(cor(salaries_stats %>% select('Salary(2019-2020)',TRB, PTS ,TOV ,AST ,PER ,`USG%` ,BPM ,VORP ,WS ,`AST%` ,FTA,FGA,FG,RPM,WINS)), Rowv = NA, Colv = NA)
+```
+
+##Basic Stats Pairplot
+
+```{r}
+library(GGally)
+
+salaries_stats %>%
+  ggpairs(legend = 1,
+          columns = c(32,24,30,28,25,20,10,9),
+          upper = list(continuous = "points", combo = "dot_no_facet"),
+          ggplot2::aes(colour=All_Star),
+          columnLabels = c("Salary","TRB", "PTS", "TOV" ,"AST","FTA","FGA","FG")
+          )
+
+```
+
+##Advanced Stats Pairplot
+
+```{r}
+salaries_stats %>%
+  ggpairs(legend = 1,
+          columns = c(32,34,45,48,52,53,41,56),
+          upper = list(continuous = "points", combo = "dot_no_facet"),
+          ggplot2::aes(colour= All_Star),
+          columnLabels = c("Salary","PER", "USG%", "BPM" ,"VORP","WS","AST%","RPM"))
+```
+
+
+##Position
+
+```{r,out.width= "50%",echo=FALSE}
+
+ggplot(bar_plot,aes(x = Pos, y = mean_salary)) +
+  geom_col(fill = c("#00CCFF","#0099FF","#0066FF","#0033FF","#000099")) +
+  labs(title = "Mean Salary Per Position", x = "Position", y = "Mean Salary (in millions of dollars)")
+
+ggplot(salaries_stats, aes(x = Pos, y = `Salary(2019-2020)`)) +
+      geom_violin(fill = 'blue')
+
+```
+
+
+###Age Categories
+
+```{r,out.width= "50%",echo=FALSE}
+
+ ggplot(bar_plot2, aes(x = Age_cat, y = mean_salary)) +
+  geom_col(fill = c("#00CCFF","#0099FF","#0066FF")) +
+  labs(title = "Mean Salary Per Age Category", x = "Age Category", y = "Mean Salary (in millions of dollars)")
+
+ ggplot(salaries_stats, aes(x = Age_cat, y = `Salary(2019-2020)`)) +
+      geom_violin(fill = 'blue')
+```
+
+
+##Starter
+
+```{r,,out.width= "50%",echo=FALSE}
+ggplot(bar_plot3, aes(x = Starter, y = mean_salary)) +
+  geom_col(fill = c("#00CCFF","#0099FF")) +
+  labs(title = "Mean Salary (Starter vs Non-Starter)", x = "Starter", y = "Mean Salary (in millions of dollars)")
+
+ ggplot(salaries_stats, aes(x = Starter, y = `Salary(2019-2020)`)) +
+      geom_violin(fill = 'blue')
+```
+
+##All_Star
+
+```{r,out.width='50%',echo= FALSE}
+ggplot(bar_plot4, aes(x = All_Star, y = mean_salary)) +
+  geom_col(fill = c("#00CCFF","#0099FF")) +
+  labs(title = "Mean Salary (All Stars vs Non-All Stars)", x = "All Star", y = "Mean Salary (in millions of dollars)")
+
+ ggplot(salaries_stats, aes(x = All_Star, y = `Salary(2019-2020)`)) +
+      geom_violin(fill = 'blue')
+```
+
+
+```{r,echo= FALSE}
+salaries_stats$Young = ifelse(salaries_stats$Age_cat == "Young",1,0)
+salaries_stats$Prime = ifelse(salaries_stats$Age_cat == "Prime",1,0)
+salaries_stats$Old = ifelse(salaries_stats$Age_cat == "Old",1,0)
+
+salaries_stats$Starter = ifelse(salaries_stats$Starter == "Yes",1,0)
+salaries_stats$All_Star = ifelse(salaries_stats$All_Star == TRUE,1,0)
+
+
+```
+
+
+##Modeling
+
+This section involves modeling with many of the statistics we scraped and features we added. The first model I tried to fit salary to was multiple linear regression. The second model I tried was ridge regression. I chose my features by carefully examining the correlation heatmap and scatterplots to get an idea of the variables that were correlated with salary.
+
+```{r}
+set.seed(600000,sample.kind="Rounding" )
+
+training = sample_frac(salaries_stats,(0.75)) #training dataset
+
+testing = salaries_stats %>%           
+    filter(!(Player %in% training$Player)) #testing dataset
+
+salary_model = lm(`Salary(2019-2020)` ~  TRB + PTS + FTA + TOV + AST + PER + RPM + `USG%` + VORP  + WS  + Age_cat + Starter + All_Star, data = training)
+
+summary(salary_model)
+
+```
+
+Our model yields a $R^2$ of 0.6484. This means that 64.84 percent of variation in the model is due to the linear relationship between player salary and our predictors. The adjusted $R^2$ is 0.6338, or the $R^2$ adjusted for the number of predictors.
+
+#Checking Model Accuracy
+
+We want to see how accurately our model can predict a player's salary. To do this, we randomly split the dataset into a training and testing dataset. The model was trained on the training datset (3/4 of total data). We use the testing dataset to check how well the model can perform on data that it has not been trained on. The graph below gives a visual representation of the models salary prediction on the testing dataset. I also calculated the out of sample RMSE, which shows the deviance of our predictions on the testing data from the actual salary amount.
+
+```{r}
+prediction_data = data.frame(player = testing$Player,Actual = testing$`Salary(2019-2020)`,Predicted = predict(salary_model,newdata = testing))
+
+prediction_data$player = as.character(prediction_data$player)
+
+for(i in 1:length(prediction_data$Predicted)){ ##Forces salary prediction to be above 0
+  if(prediction_data$Predicted[i] < 0.05){
+    prediction_data$Predicted[i] = 0.05
+  }
+}
+
+RMSE = function(m, o){
+  sqrt(mean((m - o)^2))
+}
+
+
+RMSE(prediction_data$Predicted,prediction_data$Actual)
+
+ggplot(prediction_data, aes(x = Actual, y = Predicted)) + 
+  geom_point(color = "purple") +
+  geom_abline(intercept = 0, slope = 1) + 
+  geom_label_repel(aes(label= ifelse(Predicted > 20 | Actual > 20 ,player,""))) 
+```
+
+
+##Ridge Regression
+
+We can also try ridge regression to see if it yields a better RMSE score than linear regression on the same train test split. Ridge regression allows for more bias and less variance by adding a penalty term when minimizing our residuals squared $\lambda(\beta_1^2 + \beta_2^2 + ... \beta_p^2)$. We pick this penalty term (lambda) through cross validation where we select the lambda that minimizes the cross validation error(MSE). This is demonstrated in the graph below that shows the optimal range of log(lambda) that minimizes MSE.
+
+```{r}
+library(glmnet)
+Xmat <- as.matrix(training %>%
+                    select(TRB,PTS,FTA,TOV,AST,PER,BPM,`USG%`,VORP ,WS,Prime,Old,Starter,All_Star))
+Ymat <- training$`Salary(2019-2020)`
+nba.ridge <- glmnet(Xmat, Ymat, alpha=0)
+
+set.seed(20000)
+
+# Ridge regression, choosing lambda by cross-validation
+nba.ridge.cv <- cv.glmnet(Xmat, Ymat, alpha=0, nfold=5)
+plot(nba.ridge.cv)
+
+
+prediction_data_ridge = data.frame(player = testing$Player,Actual = testing$`Salary(2019-2020)`,Predicted = predict(nba.ridge.cv, newx = as.matrix(testing %>%
+                    select(TRB,PTS,FTA,TOV,AST,PER,BPM,`USG%`,VORP,WS,Prime,Old,Starter,All_Star)), s = "lambda.min")
+)
+
+prediction_data_ridge$Predicted = prediction_data_ridge$X1
+for(i in 1:length(prediction_data_ridge$Predicted)){ ##Forces salary prediction to be above 0
+  if(prediction_data_ridge$Predicted[i] < 0.05){
+    prediction_data_ridge$Predicted[i] = 0.05
+  }
+}
+prediction_data_ridge$player = as.character(prediction_data_ridge$player)
+
+
+RMSE(prediction_data_ridge$Predicted,testing$`Salary(2019-2020)`)
+
+
+ggplot(prediction_data_ridge, aes(x = Actual, y = Predicted)) + 
+  geom_point(color = "purple") +
+  geom_abline(intercept = 0, slope = 1) + 
+  geom_label_repel(aes(label= ifelse(Predicted > 20 | Actual > 20 ,player,""))) 
+
+```
+
+##Conclusion/Final Thoughts
+
+After calculating the RMSE on our testing data for both regression methods, ridge regression seems to perform slightly better. Overall, our predictions deviate from actual salaries by about 4.87 million dollars. This is not terrible, but it could definitely be better. If I were an NBA GM, I would use a model like this as one factor in determining what a player is truly worth. Many times, a GM may have to pay more than the market value of a player in order to convince the player to stay. This is why a player like Chandler Parsons (massively overpaid) makes as much as he does despite zero all star appearances. The model also seems to point out when players like Jayson Tatum and Domantas Sabonis are outplaying their contracts.
+
+
+
