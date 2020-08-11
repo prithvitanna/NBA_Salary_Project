@@ -491,7 +491,7 @@ summary(salary_model)</code></pre>
 ## Residual standard error: 5.483 on 338 degrees of freedom
 ## Multiple R-squared:  0.6481, Adjusted R-squared:  0.6336 
 ## F-statistic: 44.47 on 14 and 338 DF,  p-value: &lt; 2.2e-16</code></pre>
-<p>Our model yields a <span class="math inline">\(R^2\)</span> of 0.6484. This means that 64.84 percent of variation in the model is due to the linear relationship between player salary and our predictors. The adjusted <span class="math inline">\(R^2\)</span> is 0.6338, or the <span class="math inline">\(R^2\)</span> adjusted for the number of predictors.</p>
+<p>Our model yields a <span class="math inline">\(R^2\)</span> of 0.6481. This means that 64.81 percent of variation in the model is due to the linear relationship between player salary and our predictors. The adjusted <span class="math inline">\(R^2\)</span> is 0.6336, or the <span class="math inline">\(R^2\)</span> adjusted for the number of predictors.</p>
 </div>
 <div id="checking-model-accuracy" class="section level1">
 <h1>Checking Model Accuracy</h1>
@@ -556,7 +556,7 @@ RMSE(prediction_data_ridge$Predicted,testing$`Salary(2019-2020)`)</code></pre>
 </div>
 <div id="conclusionfinal-thoughts" class="section level2">
 <h2>Conclusion/Final Thoughts</h2>
-<p>After calculating the RMSE on our testing data for both regression methods, ridge regression seems to perform slightly better. Overall, our predictions deviate from actual salaries by about 4.87 million dollars. This is not terrible, but it could definitely be better. If I were an NBA GM, I would use a model like this as one factor in determining what a player is truly worth. Many times, a GM may have to pay more than the market value of a player in order to convince the player to stay. This is why a player like Chandler Parsons (massively overpaid) makes as much as he does despite zero all star appearances. The model also seems to point out when players like Jayson Tatum and Domantas Sabonis are outplaying their contracts.</p>
+<p>After calculating the RMSE on our testing data for both regression methods, ridge regression seems to perform slightly better. Overall, our predictions deviate from actual salaries by about 4.88 million dollars. This is not terrible, but it could definitely be better. If I were an NBA GM, I would use a model like this as one factor in determining what a player is truly worth. Many times, a GM may have to pay more than the market value of a player in order to convince the player to stay. This is why a player like Chandler Parsons (massively overpaid) makes as much as he does despite zero all star appearances. The model also seems to point out when players like Jayson Tatum and Domantas Sabonis are outplaying their contracts.</p>
 </div>
 </div>
 
