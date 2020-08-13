@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,message = FALSE, warning = FALSE,cache = FALSE)
+knitr::opts_chunk$set(echo = TRUE,message = FALSE, warning = FALSE)
 rm(list = ls())
 ```
 
@@ -53,7 +53,11 @@ for (i in 2:13){ ##scrape remaining pages of rpm data
 
 ```
 
-```{r,echo=FALSE}
+##Cleaning Functions
+
+The following functions will be used repeatedly throughout the data cleaning process
+
+```{r}
 removeAccents<-function(x)
 {
 a <- c('À', 'Á', 'Â', 'Ã', 'Ä', 'Å', 'Æ', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï', 'Ð', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ø', 'Ù', 'Ú', 'Û', 'Ü', 'Ý', 'ß', 'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ç', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'ù', 'ú', 'û', 'ü', 'ý', 'ÿ', 'Ā', 'ā', 'Ă', 'ă', 'Ą', 'ą', 'Ć', 'ć', 'Ĉ', 'ĉ', 'Ċ', 'ċ', 'Č', 'č', 'Ď', 'ď', 'Đ', 'đ', 'Ē', 'ē', 'Ĕ', 'ĕ', 'Ė', 'ė', 'Ę', 'ę', 'Ě', 'ě', 'Ĝ', 'ĝ', 'Ğ', 'ğ', 'Ġ', 'ġ', 'Ģ', 'ģ', 'Ĥ', 'ĥ', 'Ħ', 'ħ', 'Ĩ', 'ĩ', 'Ī', 'ī', 'Ĭ', 'ĭ', 'Į', 'į', 'İ', 'ı', 'Ĳ', 'ĳ', 'Ĵ', 'ĵ', 'Ķ', 'ķ', 'Ĺ', 'ĺ', 'Ļ', 'ļ', 'Ľ', 'ľ', 'Ŀ', 'ŀ', 'Ł', 'ł', 'Ń', 'ń', 'Ņ', 'ņ', 'Ň', 'ň', 'ŉ', 'Ō', 'ō', 'Ŏ', 'ŏ', 'Ő', 'ő', 'Œ', 'œ', 'Ŕ', 'ŕ', 'Ŗ', 'ŗ', 'Ř', 'ř', 'Ś', 'ś', 'Ŝ', 'ŝ', 'Ş', 'ş', 'Š', 'š', 'Ţ', 'ţ', 'Ť', 'ť', 'Ŧ', 'ŧ', 'Ũ', 'ũ', 'Ū', 'ū', 'Ŭ', 'ŭ', 'Ů', 'ů', 'Ű', 'ű', 'Ų', 'ų', 'Ŵ', 'ŵ', 'Ŷ', 'ŷ', 'Ÿ', 'Ź', 'ź', 'Ż', 'ż', 'Ž', 'ž', 'ſ', 'ƒ', 'Ơ', 'ơ', 'Ư', 'ư', 'Ǎ', 'ǎ', 'Ǐ', 'ǐ', 'Ǒ', 'ǒ', 'Ǔ', 'ǔ', 'Ǖ', 'ǖ', 'Ǘ', 'ǘ', 'Ǚ', 'ǚ', 'Ǜ', 'ǜ', 'Ǻ', 'ǻ', 'Ǽ', 'ǽ', 'Ǿ', 'ǿ');
@@ -79,7 +83,8 @@ removeTitles <- function(x){
 
 ##Cleaning and Combining Data
 
-In this section, we cleaned and combined our datasets. Some common issues were empty rows of data, different names for the same player in data frames (Jr. or III), and players playing a season for multiple teams meaning they have more than one entry in the dataframe. Sometimes, a player playing for multiple teams in one season would have different salaries for different teams. I solved this problem by adding up total salalries for players who players for more than one team. I also had to remove all foreign accents as the RPM dataset did not include them. The RPM dataset also had the name column in the format (name,pos) so I had to extract only the name from this column. Once all the names matched up, I used an inner join command to combine all the datasets by player name.
+In this section, we cleaned and combined our datasets. Some common issues were empty rows of data, different names for the same player in data frames (Jr. or III), and players playing a season for multiple teams meaning they have more than one entry in the dataframe. Sometimes, a player playing for multiple teams in one season would have different salaries for different teams. I solved this problem by adding up total salalries for players who players for more than one team. I also had to remove all foreign accents as the RPM dataset did not include them. The RPM dataset also had the name column in the format (name,pos) so I had to extract only the name from this column. Once all the names matched up, I used an inner join command to combine all the datasets by player name. There were also many NA values in the dataset. When examining the source of these NA values, I realized that they were coming from players who did not play much. For example, if a player has not shot any free throws the free throw percentage of that player will come up as NA.I addressed this by replacing NA values with zero, since the players with NA values do not play much. 
+
 
 ```{r}
 library(stringi)
@@ -141,6 +146,8 @@ for(i in colnames(num_transform)){ ##char to numeric
 }
 
 player_stats_cleaned$Pos = gsub("\\-.*","",player_stats_cleaned$Pos) ##Eliminating second position for players
+
+player_stats_cleaned$Pos = gsub("^G$","SG",player_stats_cleaned$Pos)
 
 
 player_stats_cleaned$Player = removeTitles(player_stats_cleaned$Player)##Removing Jr.,Sr. etc from names
@@ -213,7 +220,7 @@ all_stars$Player = removeAccents(all_stars$Player)
 all_stars$Player = removeTitles(all_stars$Player)
 
 all_stars = all_stars %>%
-  filter(Player != "Carmelo Anthony" & Player != "Isaiah Thomas" & Player != "Rajon Rondo" & Player != "Derrick Rose" & Player != "Vince Carter" & Player != "Dwight Howard" & Player != "Tyson Chandler" & Player != "DeAndre Jordan" & Player != "Glenn Robinson" & Player != "Tim Hardaway" & Player != "Larry Nance" & Player != "Jeff Teague" & Player != "Andre Iguodola" & Player != "Kyle Korver" & Player != "Brook Lopez")
+  filter(Player != "Carmelo Anthony" & Player != "Isaiah Thomas" & Player != "Rajon Rondo" & Player != "Derrick Rose" & Player != "Vince Carter" & Player != "Dwight Howard" & Player != "Tyson Chandler" & Player != "DeAndre Jordan" & Player != "Glenn Robinson" & Player != "Tim Hardaway" & Player != "Larry Nance" & Player != "Jeff Teague" & Player != "Andre Iguodola" & Player != "Kyle Korver" & Player != "Brook Lopez" & Player != "Gary Payton")
 
 salaries_stats <- salaries_stats %>%
   mutate(Starter = as.factor(if_else(GS/G > 0.9,"Yes","No")),
@@ -272,7 +279,6 @@ salaries_stats %>%
           ggplot2::aes(colour=All_Star),
           columnLabels = c("Salary","TRB", "PTS", "TOV" ,"AST","FTA","FGA","FG")
           )
-
 ```
 
 ##Advanced Stats Pairplot
@@ -336,6 +342,8 @@ ggplot(bar_plot4, aes(x = All_Star, y = mean_salary)) +
       geom_violin(fill = 'blue')
 ```
 
+As one would assume, there is a clear distinction between all star and non all star players in many of the statistics. When looking at the pairplots, we can clearly see two seperate groupings forming for most of the variables. Additionally,the histograms for most of our variables are right skewed for non all star players while more centrally focused for all star players. When looking at the age groupings of players, most young players are making less than 10 million dollars and players in their prime are making the most money. If an NBA team can get production from young players, they would be saving a lot of money in the short term. The gulf in pay between starters and non starters is also significant, but it is not as much as the gulf in pay between all stars and non all stars.
+
 
 ```{r,echo= FALSE}
 salaries_stats$Young = ifelse(salaries_stats$Age_cat == "Young",1,0)
@@ -344,8 +352,6 @@ salaries_stats$Old = ifelse(salaries_stats$Age_cat == "Old",1,0)
 
 salaries_stats$Starter = ifelse(salaries_stats$Starter == "Yes",1,0)
 salaries_stats$All_Star = ifelse(salaries_stats$All_Star == TRUE,1,0)
-
-
 ```
 
 
@@ -354,22 +360,22 @@ salaries_stats$All_Star = ifelse(salaries_stats$All_Star == TRUE,1,0)
 This section involves modeling with many of the statistics we scraped and features we added. The first model I tried to fit salary to was multiple linear regression. The second model I tried was ridge regression. I chose my features by carefully examining the correlation heatmap and scatterplots to get an idea of the variables that were correlated with salary.
 
 ```{r}
-set.seed(600000,sample.kind="Rounding" )
+set.seed(70000,sample.kind="Rounding" )
 
 training = sample_frac(salaries_stats,(0.75)) #training dataset
 
 testing = salaries_stats %>%           
     filter(!(Player %in% training$Player)) #testing dataset
 
-salary_model = lm(`Salary(2019-2020)` ~  TRB + PTS + FTA + TOV + AST + PER + RPM + `USG%` + VORP  + WS  + Age_cat + Starter + All_Star, data = training)
+salary_model = lm(`Salary(2019-2020)` ~  TRB + PTS + FTA   + TOV + AST + PER + RPM + `USG%` + VORP  + WS  + Age_cat + Starter + All_Star, data = training)
 
 summary(salary_model)
 
 ```
 
-Our model yields a $R^2$ of 0.6484. This means that 64.84 percent of variation in the model is due to the linear relationship between player salary and our predictors. The adjusted $R^2$ is 0.6338, or the $R^2$ adjusted for the number of predictors.
+Our model yields a $R^2$ of 0.6538. This means that 65.38 percent of variation in the model is due to the linear relationship between player salary and our predictors. The adjusted $R^2$ is 0.6396, or the $R^2$ adjusted for the number of predictors.
 
-#Checking Model Accuracy
+##Checking Model Accuracy
 
 We want to see how accurately our model can predict a player's salary. To do this, we randomly split the dataset into a training and testing dataset. The model was trained on the training datset (3/4 of total data). We use the testing dataset to check how well the model can perform on data that it has not been trained on. The graph below gives a visual representation of the models salary prediction on the testing dataset. I also calculated the out of sample RMSE, which shows the deviance of our predictions on the testing data from the actual salary amount.
 
@@ -395,6 +401,7 @@ ggplot(prediction_data, aes(x = Actual, y = Predicted)) +
   geom_point(color = "purple") +
   geom_abline(intercept = 0, slope = 1) + 
   geom_label_repel(aes(label= ifelse(Predicted > 20 | Actual > 20 ,player,""))) 
+
 ```
 
 
@@ -405,7 +412,7 @@ We can also try ridge regression to see if it yields a better RMSE score than li
 ```{r}
 library(glmnet)
 Xmat <- as.matrix(training %>%
-                    select(TRB,PTS,FTA,TOV,AST,PER,BPM,`USG%`,VORP ,WS,Prime,Old,Starter,All_Star))
+                    select(TRB,PTS,FTA,TOV,AST,PER,RPM,`USG%`,VORP ,WS,Prime,Old,Starter,All_Star))
 Ymat <- training$`Salary(2019-2020)`
 nba.ridge <- glmnet(Xmat, Ymat, alpha=0)
 
@@ -417,7 +424,7 @@ plot(nba.ridge.cv)
 
 
 prediction_data_ridge = data.frame(player = testing$Player,Actual = testing$`Salary(2019-2020)`,Predicted = predict(nba.ridge.cv, newx = as.matrix(testing %>%
-                    select(TRB,PTS,FTA,TOV,AST,PER,BPM,`USG%`,VORP,WS,Prime,Old,Starter,All_Star)), s = "lambda.min")
+                    select(TRB,PTS,FTA,TOV,AST,PER,RPM,`USG%`,VORP,WS,Prime,Old,Starter,All_Star)), s = "lambda.min")
 )
 
 prediction_data_ridge$Predicted = prediction_data_ridge$X1
@@ -437,11 +444,13 @@ ggplot(prediction_data_ridge, aes(x = Actual, y = Predicted)) +
   geom_abline(intercept = 0, slope = 1) + 
   geom_label_repel(aes(label= ifelse(Predicted > 20 | Actual > 20 ,player,""))) 
 
+
 ```
+
 
 ##Conclusion/Final Thoughts
 
-After calculating the RMSE on our testing data for both regression methods, ridge regression seems to perform slightly better. Overall, our predictions deviate from actual salaries by about 4.87 million dollars. This is not terrible, but it could definitely be better. If I were an NBA GM, I would use a model like this as one factor in determining what a player is truly worth. Many times, a GM may have to pay more than the market value of a player in order to convince the player to stay. This is why a player like Chandler Parsons (massively overpaid) makes as much as he does despite zero all star appearances. The model also seems to point out when players like Jayson Tatum and Domantas Sabonis are outplaying their contracts.
+After calculating the RMSE on our testing data for both regression methods, ridge regression seems to perform slightly better. Overall, our predictions deviate from actual salaries by about 4.9 million dollars. This is not terrible, but it could definitely be better. If I were an NBA GM, I would use a model like this as one factor in determining what a player is truly worth. Many times, a GM may have to pay more than the market value of a player in order to convince the player to stay. This is why a player like Andrew Wiggins makes as much as he does despite zero all star appearances. The model also seems to point out when players like Brandon Ingram are outplaying their contracts.
 
 
 
